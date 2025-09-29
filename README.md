@@ -1,17 +1,42 @@
-# PRING
-This is the official codebase of the paper: **PRING: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs**
+# <img src="./photo/pring_icon.png" alt="PRING icon" width="80" style="vertical-align: middle;"> PRING: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs
+
+<!-- # PRING: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs -->
+
+This repository contains the official codebase for the paper:
+[**PRING: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs**](https://arxiv.org/abs/2507.05101) (NeurIPS 2025)
 
 ![Overview](./photo/pring_overview.png)
 
-PRING contains two main tasks: **Topology-oriented Task** and **Function-oriented Task**.
-- **Topology-oriented Task**: This task focuses on the prediction of protein-protein interaction (PPI) networks. It includes two sub-tasks: **Intra-species PPI Network Generation** and **Cross-species PPI Network Generation**.
-- **Function-oriented Task**: This task focuses on evalution the reconstructed PPI networks from a functional perspective. It includes three sub-tasks: **Protein Complex Pathway Prediction**, **GO Enrichment Analysis**, and **Essential Protein Justification**.
+---
+
+## Introduction
+
+**PRING** is a benchmark designed to evaluate protein–protein interaction (PPI) prediction methods beyond isolated pairs, shifting towards a **network-level perspective**.
+
+It defines two major categories of tasks:
+
+* **Topology-Oriented Tasks**: Evaluate the ability of models to reconstruct PPI networks.
+
+  * **Intra-species PPI Network Generation**
+  * **Cross-species PPI Network Generation**
+* **Function-Oriented Tasks**: Assess the biological plausibility of reconstructed PPI networks.
+
+  * **Protein Complex Pathway Prediction**
+  * **GO Enrichment Analysis**
+  * **Essential Protein Justification**
+
+We hope this benchmark facilitates the development of **next-generation PPI prediction models** that capture the complex interplay of protein networks more effectively.
+
+---
+
+## Project Status
+
+* [x] Data preprocessing pipeline (2025-09-19)
+* [x] Evaluation code (2025-09-19)
 
 ---
 
 ## 1. Environment Setup
-
-important libs: torch==2.0.1+cu118 (This is not mandatory, but recommended).
 
 ```bash
 git clone https://github.com/SophieSarceau/PRING.git
@@ -21,81 +46,61 @@ conda activate pring
 bash install.sh
 ```
 
+---
+
 ## 2. Data Preparation
 
-You can download the data from [PRING - Harvard Dataverse](https://doi.org/10.7910/DVN/22AUPR) and place it in the `./pring_dataset` folder.
+We provide a complete pipeline for preprocessing raw datasets into the required format.
 
-## 1. Topology-oriented Task
-### 1.1 Intra-species PPI Network Generation (HUMAN)
+* See [README.md](./data_process/README.md) for step-by-step preprocessing instructions.
+* The processed data is stored in `./data_process/pring_dataset`.
+* If you wish to download the raw data directly, please refer to [README.md](./data_process/README.md).
+* A detailed schema of the dataset format is available in [data_format.md](./data_process/data_format.md).
 
-To train the model, you need the following files under the `./pring_dataset/human` folder:
-```
-./pring_dataset/human/BFS/human_train_ppi.txt (train)
-./pring_dataset/human/BFS/human_val_ppi.txt (validation)
-./pring_dataset/human/BFS/human_all_test_ppi.txt (test)
-./pring_dataset/human/human_simple.fasta (protein sequences)
-```
+You may also extend the dataset to additional species using the provided pipeline.
 
-The `human_all_test_ppi.txt` file contains all-against-all pairs to reconstruct the complete test graph.
+---
 
-To evaluate the model's performance under different sampling strategies, namely **BFS**, **DFS**, and **RANDOM WALK**, you may refer to the following file: `./graph_level_eval/eval.py`.
-The evaluation metrics include **Graph Similarity**, **Relative Density**, **Degree Distribution (MMD)**, **Clutering Coefficient (MMD)**, **Spectral (MMD)**.
-Take **BFS** as an example:
-```
-./pring_dataset/human/human_all_test_ppi_pred.txt (predicted all-against-all pairs)
-./pring_dataset/human/human_test_graph.pkl (ground truth test graph)
-./pring_dataset/human/human_BFS_sampled_nodes.pkl (BFS sampled subgraphs)
-```
-The file format of `human_all_test_ppi_pred.txt` should be like this:
-```
-uniprot_id1 uniport_id2 label
-```
-where `label` is 1 for positive samples and 0 for negative samples.
+## 3. Topology-Oriented Tasks
 
-### 1.2 Cross-species PPI Network Generation (ARATH, YEAST, ECOLI)
-For the cross-species PPI network generation, you need to use the model trained on the human PPI network to predict the PPI network of other species, including **Ecoli**, **Yeast**, and **Arath**.
-Take **Arath** as an example, suppose you want to evaluate the model under **BFS** sampling strategy, you need the following files under `./pring_dataset/arath` folder:
+* **Intra-species PPI Network Generation (HUMAN)**
+  Guidance available in: [intra_species.md](./topology_task/intra_species.md)
+
+* **Cross-species PPI Network Generation (ARATH, YEAST, ECOLI)**
+  Guidance available in: [cross_species.md](./topology_task/cross_species.md)
+
+---
+
+## 4. Function-Oriented Tasks
+
+* **Protein Complex Pathway Prediction**
+  Guidance available in: [complex_pathway.md](./complex_pathway/complex_pathway.md)
+
+* **GO Enrichment Analysis**
+  Guidance available in: [enrichment_analysis.md](./enrichment_analysis/enrichment_analysis.md)
+
+* **Essential Protein Justification**
+  Guidance available in: [essential_protein.md](./essential_protein/essential_protein.md)
+
+---
+
+## 5. Citation
+
+If you find this work useful, please consider citing:
+
+```bibtex
+@article{zheng2025pring,
+  title={PRING: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs},
+  author={Zheng, Xinzhe and Du, Hao and Xu, Fanding and Li, Jinzhe and Liu, Zhiyuan and Wang, Wenkang and Chen, Tao and Ouyang, Wanli and Li, Stan Z and Lu, Yan and others},
+  journal={arXiv preprint arXiv:2507.05101},
+  year={2025}
+}
+
+@inproceedings{zheng2025pring,
+  title={{PRING}: Rethinking Protein-Protein Interaction Prediction from Pairs to Graphs},
+  author={Xinzhe Zheng and Hao Du and Fanding Xu and Jinzhe Li and Zhiyuan Liu and Wenkang Wang and Tao Chen and Wanli Ouyang and Stan Z. Li and Yan Lu and Nanqing Dong and Yang Zhang},
+  booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track},
+  year={2025},
+  url={https://openreview.net/forum?id=mHCOVlFXTw}
+}
 ```
-./pring_dataset/arath/arath_all_test_ppi.txt (all-against-all pairs)
-./pring_dataset/arath/arath_test_graph.pkl (ground truth test graph)
-./pring_dataset/arath/arath_BFS_sampled_nodes.pkl (BFS sampled subgraphs)
-```
-
-The rest of the evaluation process is the same as the intra-species PPI network generation task.
-
-## 2. Function-oriented Task
-
-### 2.1 Protein Complex Pathway Prediction
-In this task, we need to use the trained model on humans to construct the protein complex pathway.
-You may find all the data files under `./pathway_data` folder.
-Specifically, as shown below:
-```bash
-./pathway_data/complex_test_pairs.txt (used for model inference)
-./pathway_data/complex_proteins.fasta (prot seqs)
-./pathway_data/complex_graphs.pkl (ground truth complex graph)
-```
-
-To evaluate the model, please refer to the evaluation files `./pathway_eval/eval.py`.
-The evaluation metrics include **Pathway Recall**, **Pathway Precision**, and **Pathway Connectivity**.
-
-### 2.2 GO Enrichment Analysis
-In this task, we conduct GO enrichment analysis on the reconstructed Human test PPI network.
-You need the following files to complete the evaluation:
-```
-./pring_dataset/human/human_all_test_ppi_pred.txt (predicted all-against-all pairs)
-./pring_dataset/human/human_test_graph.pkl (ground truth test graph)
-```
-
-For evaluation, please refer to `./enrichment_analysis/eval.py`.
-The evaluation metrics include **Functional Alignment**, and **Consistency Ratio**.
-
-### 2.3 Essential Protein Justification
-In this task, we need to use the reconstructed Human test PPI network to justify the essential proteins from non-essential proteins.
-Again, you need the following files to complete the evaluation:
-```
-./pring_dataset/human/human_all_test_ppi_pred.txt (predicted all-against-all pairs)
-./pring_dataset/human/human_test_graph.pkl (ground truth test graph)
-```
-
-For evaluation, please refer to `./essential_protein/eval.py`.
-The evaluation metrics include **Precision@K** and **Distribution Overlap**.

@@ -2,7 +2,7 @@ import pickle
 import re
 from io import StringIO
 import concurrent.futures
-import time
+import argparse
 from functools import partial
 
 import networkx as nx
@@ -65,8 +65,12 @@ def process_entry(entry):
 
 
 if __name__ == "__main__":
-    test_graph_path = "/home/bingxing2/ailab/group/ai4agr/zxz/PPI/benchmark/GenPPI-local/genppi_dataset/human/BFS/human_test_graph.pkl"
-    test_graph = pickle.load(open(test_graph_path, "rb"))
+    parser = argparse.ArgumentParser(description="Retrieve GO terms for proteins from a graph file.")
+    parser.add_argument("--graph_path", type=str, help="Path to the input graph file.")
+    parser.add_argument("--output_path", type=str, help="Path to save the output pickle file.")
+    args = parser.parse_args()
+
+    test_graph = pickle.load(open(args.graph_path, "rb"))
 
     node_list = list(test_graph.nodes())
     go_dict = {}
@@ -88,6 +92,5 @@ if __name__ == "__main__":
                 print(f"Entry {future_to_entry[future]} generated an exception: {exc}")
 
     # Save the GO terms to a pickle file
-    output_path = "./test_go_terms.pkl"
-    with open(output_path, "wb") as f:
+    with open(args.output_path, "wb") as f:
         pickle.dump(go_dict, f)

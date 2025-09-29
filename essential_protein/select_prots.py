@@ -1,7 +1,5 @@
-import networkx as nx
 import pickle
-import matplotlib.pyplot as plt
-import numpy as np
+import argparse
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -35,13 +33,13 @@ def compute_network_centrality(G):
     return nc_dict
 
 
-if __name__ == "__main__":
-    ids = read_uniprot_ids("essential_proteins.txt")
+def main(args):
+    ids = read_uniprot_ids(args.essential_proteins_file)
     print("The number of essential proteins is: ", len(ids))
-    non_ids = read_uniprot_ids("non_essential_proteins.txt")
+    non_ids = read_uniprot_ids(args.non_essential_proteins_file)
     print("The number of non-essential proteins is: ", len(non_ids))
 
-    human_ppi_graph = pickle.load(open("human_test_graph.pkl", "rb"))
+    human_ppi_graph = pickle.load(open(args.graph_file, "rb"))
     human_ppi_nodes = set(human_ppi_graph.nodes())
     print("The length of human ppi nodes is: ", len(human_ppi_nodes))
 
@@ -61,24 +59,24 @@ if __name__ == "__main__":
     essential_rank_dict = {k: v for k, v in sorted(essential_dict.items(), key=lambda item: item[1], reverse=True)}
     non_essential_rank_dict = {k: v for k, v in sorted(non_essential_dict.items(), key=lambda item: item[1], reverse=True)}
 
-    # Filter essential proteins with score > 25 and select top 100
-    essential_above_threshold = [(k, v) for k, v in essential_rank_dict.items() if v > 30]
-    print(f"Number of essential proteins with score > 30: {len(essential_above_threshold)}")
+    # Filter essential proteins with score > threshold and select top N
+    essential_above_threshold = [(k, v) for k, v in essential_rank_dict.items() if v > args.essential_threshold]
+    print(f"Number of essential proteins with score > {args.essential_threshold}: {len(essential_above_threshold)}")
 
-    # Take top 100 essential proteins with score > 25 in descending order
-    essential_selected = essential_above_threshold[-100:]
-    if len(essential_selected) < 100:
-        print(f"Warning: Only {len(essential_selected)} essential proteins with score > 25 available")
+    # Take top N essential proteins with score > threshold in descending order
+    essential_selected = essential_above_threshold[-args.top_n:]
+    if len(essential_selected) < args.top_n:
+        print(f"Warning: Only {len(essential_selected)} essential proteins with score > {args.essential_threshold} available")
 
-    # Filter non-essential proteins with score < 25 and select bottom 100
-    non_essential_below_threshold = [(k, v) for k, v in non_essential_rank_dict.items() if v < 20]
-    print(f"Number of non-essential proteins with score < 20: {len(non_essential_below_threshold)}")
+    # Filter non-essential proteins with score < threshold and select bottom N
+    non_essential_below_threshold = [(k, v) for k, v in non_essential_rank_dict.items() if v < args.non_essential_threshold]
+    print(f"Number of non-essential proteins with score < {args.non_essential_threshold}: {len(non_essential_below_threshold)}")
 
-    # Sort in ascending order and take the first 100
+    # Sort in ascending order and take the first N
     non_essential_below_threshold.sort(key=lambda x: x[1])
-    non_essential_selected = non_essential_below_threshold[-100:]
-    if len(non_essential_selected) < 100:
-        print(f"Warning: Only {len(non_essential_selected)} non-essential proteins with score < 25 available")
+    non_essential_selected = non_essential_below_threshold[-args.top_n:]
+    if len(non_essential_selected) < args.top_n:
+        print(f"Warning: Only {len(non_essential_selected)} non-essential proteins with score < {args.non_essential_threshold} available")
 
     # Extract protein IDs and scores
     essential_selected_ids = [item[0] for item in essential_selected]
@@ -87,26 +85,13 @@ if __name__ == "__main__":
     non_essential_selected_scores = [item[1] for item in non_essential_selected]
 
     # Save the selected proteins to files
-    with open("selected_essential_proteins.txt", "w") as f:
+    with open(args.out_essential, "w") as f:
         for prot_id in essential_selected_ids:
             f.write(f"{prot_id}\n")
 
-    with open("selected_non_essential_proteins.txt", "w") as f:
+    with open(args.out_non_essential, "w") as f:
         for prot_id in non_essential_selected_ids:
             f.write(f"{prot_id}\n")
-
-    # Save the value of network centrality for selected proteins into a xlsx file
-    # import pandas as pd
-    # essential_df = pd.DataFrame({
-    #     'Protein ID': essential_selected_ids,
-    #     'Network Centrality Score': essential_selected_scores
-    # })
-    # essential_df.to_excel("selected_essential_proteins_scores.xlsx", index=False)
-    # non_essential_df = pd.DataFrame({
-    #     'Protein ID': non_essential_selected_ids,
-    #     'Network Centrality Score': non_essential_selected_scores
-    # })
-    # non_essential_df.to_excel("selected_non_essential_proteins_scores.xlsx", index=False)
 
     # Plot the distribution of network centrality scores for selected proteins
     plt.figure(figsize=(6, 6))
@@ -116,14 +101,31 @@ if __name__ == "__main__":
                 label='Non-Essential Proteins', kde=True, stat='density')
     plt.xlabel('Network Centrality Score', fontsize=15)
     plt.ylabel('Frequency', fontsize=15)
-    # plt.axvline(x=25, color='r', linestyle='--', label='Threshold = 25')
     plt.legend(fontsize=10)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-    plt.savefig('selected_network_centrality_distribution.pdf', bbox_inches='tight')
+    plt.savefig(args.out_plot, bbox_inches='tight')
     plt.show()
 
-    print(f"Selected {len(essential_selected_ids)} essential proteins with scores > 25")
-    print(f"Selected {len(non_essential_selected_ids)} non-essential proteins with scores < 25")
-    print(f"Essential score range: {min(essential_selected_scores)} to {max(essential_selected_scores)}")
-    print(f"Non-essential score range: {min(non_essential_selected_scores)} to {max(non_essential_selected_scores)}")
+    print(f"Selected {len(essential_selected_ids)} essential proteins with scores > {args.essential_threshold}")
+    print(f"Selected {len(non_essential_selected_ids)} non-essential proteins with scores < {args.non_essential_threshold}")
+    if essential_selected_scores:
+        print(f"Essential score range: {min(essential_selected_scores)} to {max(essential_selected_scores)}")
+    if non_essential_selected_scores:
+        print(f"Non-essential score range: {min(non_essential_selected_scores)} to {max(non_essential_selected_scores)}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Select essential and non-essential proteins based on network centrality.")
+    parser.add_argument('--essential_proteins_file', type=str, default='essential_proteins.txt', help='Path to the file with essential protein IDs.')
+    parser.add_argument('--non_essential_proteins_file', type=str, default='non_essential_proteins.txt', help='Path to the file with non-essential protein IDs.')
+    parser.add_argument('--graph_file', type=str, help='Path to the human PPI graph file.')
+    parser.add_argument('--out_essential', type=str, default='selected_essential_proteins2.txt', help='Output file for selected essential proteins.')
+    parser.add_argument('--out_non_essential', type=str, default='selected_non_essential_proteins2.txt', help='Output file for selected non-essential proteins.')
+    parser.add_argument('--out_plot', type=str, default='selected_network_centrality_distribution.png', help='Output file for the distribution plot.')
+    parser.add_argument('--essential_threshold', type=float, default=30, help='Network centrality score threshold for essential proteins.')
+    parser.add_argument('--non_essential_threshold', type=float, default=20, help='Network centrality score threshold for non-essential proteins.')
+    parser.add_argument('--top_n', type=int, default=100, help='Number of proteins to select for each category.')
+
+    args = parser.parse_args()
+    main(args)

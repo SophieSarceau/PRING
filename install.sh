@@ -5,7 +5,7 @@ set -e
 
 echo "Installing packages..."
 
-pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
+# pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
 pip install bioservices==1.12.1
 pip install gprofiler==1.2.2
 pip install matplotlib==3.8.4
@@ -20,5 +20,7 @@ pip install scipy==1.15.3
 pip install seaborn==0.13.2
 pip install tqdm==4.67.1 # Using the latest specified version
 pip install wwl==0.1.2
+pip install biopython==1.81
+pip install gprofiler-official
 
 echo "All packages installed successfully."

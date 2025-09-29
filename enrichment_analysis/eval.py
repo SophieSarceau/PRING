@@ -1,14 +1,12 @@
 import pickle
-import math
 import networkx as nx
+from networkx.algorithms import community as nx_community
 import numpy as np
 from tqdm import tqdm
-import community as community_louvain
 from collections import defaultdict
 from gprofiler import GProfiler
-from collections import OrderedDict,deque,Counter
-from scipy.stats import spearmanr
 import random
+import argparse
 
 def read_ppis(ppi_file):
     ppis = []
@@ -17,8 +15,9 @@ def read_ppis(ppi_file):
             line = line.strip()
             if line:
                 # print(line)
-                prot1, prot2, label, neg_prob, pos_prob = line.split()
-                if pos_prob > neg_prob:
+                prot1, prot2, label = line.split()
+                label = int(label)
+                if label == 1:
                     ppis.append((prot1, prot2))
 
     return ppis
@@ -104,44 +103,45 @@ def within_cluster_similarity(cluster, go_terms, source):
 
 
 if __name__ == "__main__":
-    ### Your Path Here
-    pred_file = "/home/bingxing2/ailab/group/ai4agr/zxz/PPI/benchmark/GenPPI-local/genppi_dataset/human/BFS_pred/human_all_test_ppi_pred.txt"
-    gt_file = "/home/bingxing2/ailab/group/ai4agr/zxz/PPI/benchmark/GenPPI-local/genppi_dataset/human/BFS/human_test_graph.pkl"
-    ### End of Your Path
-    uniprot_to_goterms = "./test_go_terms.pkl"
+    parser = argparse.ArgumentParser(description="Evaluate PPI predictions with GO term enrichment analysis.")
+    parser.add_argument("--pred_file", type=str, help="Path to the predicted PPI file.")
+    parser.add_argument("--gt_file", type=str, help="Path to the ground truth graph file.")
+    parser.add_argument("--uniprot_to_goterms", type=str, help="Path to the uniprot to GO terms mapping file.")
+    parser.add_argument("--source", type=str, default="GO:BP", choices=['GO:BP', 'GO:MF', 'GO:CC'], help="GO source to use (GO:BP, GO:MF, or GO:CC).")
 
-    source = 'GO:BP' # GO:BP, GO:MF, GO:CC
+    args = parser.parse_args()
+
+    pred_file = args.pred_file
+    gt_file = args.gt_file
+    uniprot_to_goterms = args.uniprot_to_goterms
+    source = args.source
 
     random.seed(42)
     np.random.seed(42)
 
-    # Build network from edge list
-    pred_edges = read_ppis(pred_file)
-    G_pred = nx.Graph()
     G_true_ori = pickle.load(open(gt_file, 'rb'))
-    G_nodes = list(G_true_ori.nodes())
-    G_true_edges = list(G_true_ori.edges())
+    all_nodes = sorted(list(G_true_ori.nodes()))
+
+    pred_edges_raw = read_ppis(pred_file)
+    true_edges_raw = list(G_true_ori.edges())
+
+    G_pred = nx.Graph()
+    G_pred.add_nodes_from(all_nodes)
+    pred_edges_normalized = sorted([tuple(sorted(edge)) for edge in pred_edges_raw])
+    G_pred.add_edges_from(pred_edges_normalized)
+
     G_true = nx.Graph()
-    # Sort the nodes for G_nodes
-    G_nodes = sorted(G_nodes)
-    # Sort the edges by the first node then the second node for pred_edges
-    pred_edges = sorted(pred_edges, key=lambda x: (x[0], x[1]))
-    # Sort the edges by the first node for G_true_edges
-    G_true_edges = sorted(G_true_edges, key=lambda x: (x[0], x[1]))
-    # Add nodes to the graph
-    G_pred.add_nodes_from(G_nodes)
-    G_true.add_nodes_from(G_nodes)
-    # Add edges to the graph
-    G_pred.add_edges_from(pred_edges)
-    G_true.add_edges_from(G_true_edges)
+    G_true.add_nodes_from(all_nodes)
+    true_edges_normalized = sorted([tuple(sorted(edge)) for edge in true_edges_raw])
+    G_true.add_edges_from(true_edges_normalized)
+
     uniprot2go_dict = pickle.load(open(uniprot_to_goterms, 'rb'))
 
-    # Perform community detection
-    clusters_pred = community_louvain.best_partition(G_pred, resolution=1.0, random_state=42)
-    clusters_true = community_louvain.best_partition(G_true, resolution=1.0, random_state=42)
+    pred_communities_set = nx_community.louvain_communities(G_pred, resolution=1.0, seed=42)
+    true_communities_set = nx_community.louvain_communities(G_true, resolution=1.0, seed=42)
 
-    pred_clusters = clusters_to_protein_sets(clusters_pred)
-    true_clusters = clusters_to_protein_sets(clusters_true)
+    pred_clusters = [list(s) for s in pred_communities_set]
+    true_clusters = [list(s) for s in true_communities_set]
 
     print("The number of predicted clusters is: ", len(pred_clusters))
     print("The number of true clusters is: ", len(true_clusters))
@@ -160,7 +160,6 @@ if __name__ == "__main__":
             matches.append((idx_pred, best_match, best_score))
 
     jaccard_scores = []
-    spearman_list = []
     pred_neg_log_10_fdr = []
     true_neg_log_10_fdr = []
     pred_within_cluster_sim = []
@@ -200,24 +199,19 @@ if __name__ == "__main__":
         pred_within_cluster_sim_list.append(pred_within_sim_list)
         true_within_cluster_sim_list.append(true_within_sim_list)
 
-    spearman_list.append(spearmanr(pred_neg_log_10_fdr, true_neg_log_10_fdr)[0])
-
     # calculate the average Jaccard similarity
     avg_jaccard = np.mean(jaccard_scores)
-    print("Average Jaccard similarity: ", avg_jaccard)
-    # calculate the spearman correlation between the predicted and true GO terms
-    print("Spearman correlation between predicted and true GO terms: ", np.mean(spearman_list))
-    # calculate the average within-cluster similarity
+    print("Functional Allignment Score is : ", avg_jaccard)
+    # calculate the Consistency Ratio
     # remove 0 from pred_within_cluster_sim and true_within_cluster_sim
     pred_within_cluster_sim = [x for x in pred_within_cluster_sim if x != 0]
     true_within_cluster_sim = [x for x in true_within_cluster_sim if x != 0]
     avg_pred_within_sim = np.mean(pred_within_cluster_sim)
     avg_true_within_sim = np.mean(true_within_cluster_sim)
-    print("Average within-cluster similarity for predicted clusters: ", avg_pred_within_sim)
-    print("Average within-cluster similarity for true clusters: ", avg_true_within_sim)
+    print("Consistency Ratio is : ", avg_pred_within_sim / avg_true_within_sim if avg_true_within_sim != 0 else 0)
 
     # save the within cluster similarity list
-    pred_within_cluster_sim_list = np.array([item for sublist in pred_within_cluster_sim_list for item in sublist])
-    true_within_cluster_sim_list = np.array([item for sublist in true_within_cluster_sim_list for item in sublist])
-    np.save(f"{source}_ppitrans_pred_within_cluster_sim_list.npy", pred_within_cluster_sim_list)
-    np.save(f"{source}_ppitrans_true_within_cluster_sim_list.npy", true_within_cluster_sim_list)
+    # pred_within_cluster_sim_list = np.array([item for sublist in pred_within_cluster_sim_list for item in sublist])
+    # true_within_cluster_sim_list = np.array([item for sublist in true_within_cluster_sim_list for item in sublist])
+    # np.save(f"{source}_ppitrans_pred_within_cluster_sim_list.npy", pred_within_cluster_sim_list)
+    # np.save(f"{source}_ppitrans_true_within_cluster_sim_list.npy", true_within_cluster_sim_list)

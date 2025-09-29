@@ -1,14 +1,14 @@
-import networkx as nx
+import argparse
 import pickle
+
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
-from tqdm import tqdm
-from matplotlib import pyplot as plt
-import math
 from scipy.stats import gaussian_kde
-from scipy.integrate import quad
-import seaborn as sns
-from sklearn.preprocessing import MinMaxScaler
+from tqdm import tqdm
+
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def read_uniprot_ids(txt_path):
@@ -112,14 +112,26 @@ def compute_distribution_overlap(essential_dict, nonessential_dict):
 
 
 if __name__ == "__main__":
-    # Path to the essential and non-essential protein files
-    gt_human_test_graph_path = './human_test_graph.pkl'
-    pred_ppi_path = './human_all_test_ppi_pred.txt'
-    #
+    parser = argparse.ArgumentParser(description='Evaluate essential proteins based on network centrality.')
+    parser.add_argument('--gt_graph', type=str,
+                        help='Path to the ground truth human test graph file (pickle).')
+    parser.add_argument('--pred_ppi', type=str,
+                        help='Path to the predicted PPI file.')
+    parser.add_argument('--essential_proteins', type=str, default='selected_essential_proteins.txt',
+                        help='Path to the file with essential protein IDs.')
+    parser.add_argument('--non_essential_proteins', type=str, default='selected_non_essential_proteins.txt',
+                        help='Path to the file with non-essential protein IDs.')
+    args = parser.parse_args()
 
-    ids = read_uniprot_ids("selected_essential_proteins.txt")
+    # Path to the essential and non-essential protein files
+    gt_human_test_graph_path = args.gt_graph
+    pred_ppi_path = args.pred_ppi
+    essential_proteins_path = args.essential_proteins
+    non_essential_proteins_path = args.non_essential_proteins
+
+    ids = read_uniprot_ids(essential_proteins_path)
     print("The number of essential proteins is: ", len(ids))
-    non_ids = read_uniprot_ids("selected_non_essential_proteins.txt")
+    non_ids = read_uniprot_ids(non_essential_proteins_path)
     print("The number of non-essential proteins is: ", len(non_ids))
     all_ids = ids + non_ids
 
@@ -141,20 +153,20 @@ if __name__ == "__main__":
     pred_non_essential_dict = {k: pred_human_test_graph_dict[k] for k in non_ids}
     overlap, overlap_self, overlap_self2 = compute_distribution_overlap(pred_essential_dict, pred_non_essential_dict)
 
-    print("Precision: ", p_100)
-    print("Overlap: ", overlap)
+    print("Precision@K (K=100) : ", p_100)
+    print("Distribution Overlap : ", overlap)
 
     # plot the distribution of network centrality scores for both essential and non_essential predictions
-    plt.figure(figsize=(6, 6))
-    pred_essential_proteins_dict = {k: pred_human_test_graph_dict[k] for k in ids}
-    pred_non_essential_proteins_dict = {k: pred_human_test_graph_dict[k] for k in non_ids}
-    sns.histplot(list(pred_essential_proteins_dict.values()), bins=20, alpha=0.5, color='blue',
-                label='Essential Proteins', kde=True, stat='density')
-    sns.histplot(list(pred_non_essential_proteins_dict.values()), bins=20, alpha=0.5, color='red',
-                label='Non-Essential Proteins', kde=True, stat='density')
-    plt.xlabel('Network Centrality Score', fontsize=15)
-    plt.ylabel('Frequency', fontsize=15)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend(fontsize=10)
-    plt.savefig('network_centrality_distribution_pred_ppitrans.pdf', bbox_inches='tight')
+    # plt.figure(figsize=(6, 6))
+    # pred_essential_proteins_dict = {k: pred_human_test_graph_dict[k] for k in ids}
+    # pred_non_essential_proteins_dict = {k: pred_human_test_graph_dict[k] for k in non_ids}
+    # sns.histplot(list(pred_essential_proteins_dict.values()), bins=20, alpha=0.5, color='blue',
+    #             label='Essential Proteins', kde=True, stat='density')
+    # sns.histplot(list(pred_non_essential_proteins_dict.values()), bins=20, alpha=0.5, color='red',
+    #             label='Non-Essential Proteins', kde=True, stat='density')
+    # plt.xlabel('Network Centrality Score', fontsize=15)
+    # plt.ylabel('Frequency', fontsize=15)
+    # plt.xticks(fontsize=12)
+    # plt.yticks(fontsize=12)
+    # plt.legend(fontsize=10)
+    # plt.savefig('network_centrality_distribution_pred_ppitrans.pdf', bbox_inches='tight')
