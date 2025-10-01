@@ -69,6 +69,8 @@ You may also extend the dataset to additional species using the provided pipelin
 * **Cross-species PPI Network Generation (ARATH, YEAST, ECOLI)**
   Guidance available in: [cross_species.md](./topology_task/cross_species.md)
 
+> Note: In addition to the graph-level evaluation metrics, PRING also supports traditional binary classification metrics (e.g., AUC, REC, F1-score) for pairwise PPI prediction tasks. Please refer to the respective task guidance for details.
+
 ---
 
 ## 4. Function-Oriented Tasks
